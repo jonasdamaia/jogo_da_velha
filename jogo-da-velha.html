@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jogo da Velha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #dce2ee;
+    --cloth: #f4f6fb;
+    --track: #cbd3e5;
+    --ink: #1b2545;
+    --muted: #4e5a85;
+    --grid: #8f9bc2;
+    --hem: #aab4d3;
+    --weave: rgba(27, 37, 69, .05);
+    --x: #c8382b;
+    --o: #1b2545;
+    --hover: rgba(27, 37, 69, .07);
+    --focus: #1b2545;
+    --btn-bg: #1b2545;
+    --btn-fg: #f4f6fb;
+
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10162b;
+      --cloth: #1c2647;
+      --track: #19213e;
+      --ink: #eceaf2;
+      --muted: #98a3c9;
+      --grid: #6f7dae;
+      --hem: #44528a;
+      --weave: rgba(255, 255, 255, .04);
+      --x: #ff6f5e;
+      --o: #f1eee4;
+      --hover: rgba(255, 255, 255, .06);
+      --focus: #eceaf2;
+      --btn-bg: #eceaf2;
+      --btn-fg: #10162b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10162b;
+    --cloth: #1c2647;
+    --track: #19213e;
+    --ink: #eceaf2;
+    --muted: #98a3c9;
+    --grid: #6f7dae;
+    --hem: #44528a;
+    --weave: rgba(255, 255, 255, .04);
+    --x: #ff6f5e;
+    --o: #f1eee4;
+    --hover: rgba(255, 255, 255, .06);
+    --focus: #eceaf2;
+    --btn-bg: #eceaf2;
+    --btn-fg: #10162b;
+  }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 22px 16px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  h1 {
+    margin: 0;
+    text-align: center;
+    font-size: clamp(2.1rem, 8vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -.025em;
+    line-height: 1.05;
+  }
+
+  /* Controles */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .seg {
+    display: inline-flex;
+    background: var(--track);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 600;
+    font-size: .92rem;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .seg button[aria-pressed="true"] {
+    background: var(--cloth);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1.5px var(--hem);
+  }
+  .seg button:focus-visible, .btn:focus-visible, .cell:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Placar */
+  .score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 0 8px;
+    border-bottom: 2.5px dashed transparent;
+    transition: border-color .2s;
+  }
+  .score-item.active[data-p="X"] { border-color: var(--x); }
+  .score-item.active[data-p="O"] { border-color: var(--o); }
+  .score-item .lab {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .88rem; font-weight: 600; color: var(--muted);
+  }
+  .score-item .lab svg { width: 18px; height: 18px; flex: none; }
+  .score-item .n {
+    font-size: 2.1rem; font-weight: 800; line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+  .ic { fill: none; stroke: currentColor; stroke-width: 6; stroke-dasharray: 10 7; }
+  .ic-x { color: var(--x); }
+  .ic-o { color: var(--o); }
+  .ic-d { color: var(--muted); }
+
+  .status {
+    margin: 0;
+    min-height: 1.7em;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  /* Tabuleiro */
+  .board {
+    position: relative;
+    width: min(100%, 420px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border-radius: 18px;
+    background-color: var(--cloth);
+    background-image:
+      repeating-linear-gradient(0deg, var(--weave) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, var(--weave) 0 1px, transparent 1px 3px);
+  }
+  .board::before {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    border: 2px dashed var(--hem);
+    border-radius: 11px;
+    pointer-events: none;
+  }
+  .lines {
+    position: absolute;
+    inset: 7%;
+    width: 86%;
+    height: 86%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .grid-stitch {
+    fill: none;
+    stroke: var(--grid);
+    stroke-width: 3.5;
+    stroke-dasharray: 12 8;
+  }
+  .cells {
+    position: absolute;
+    inset: 7%;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  }
+  .cell {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cell svg { width: 78%; height: 78%; overflow: visible; transition: opacity .3s; }
+  .board.playable .cell.empty { cursor: pointer; }
+  .board.playable .cell.empty:hover { background: var(--hover); }
+  .cell:focus-visible { outline-offset: -8px; }
+  .board.won .cell:not(.win) svg { opacity: .3; }
+
+  .mark { color: var(--x); }
+  .mark.o { color: var(--o); }
+  .stitch { fill: none; stroke: currentColor; stroke-width: 5.5; stroke-dasharray: 8 4; }
+  .mark.o .stitch { stroke-dasharray: 6 4; }
+
+  .reveal {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 12;
+    stroke-dasharray: var(--len);
+    animation: draw-in .32s ease-out var(--d, 0s) backwards;
+  }
+  @keyframes draw-in { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+
+  .win-line {
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: draw-win .5s ease-out .25s backwards;
+  }
+  @keyframes draw-win { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+
+  /* Ações */
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .btn {
+    appearance: none;
+    font: inherit;
+    font-weight: 700;
+    min-height: 46px;
+    padding: 0 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 2px solid var(--btn-bg);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--hem); }
+  .btn:active { transform: translateY(1px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .win-line { animation: none; }
+    .cell svg, .score-item, .seg button { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>Jogo da Velha</h1>
+
+  <div class="controls">
+    <div class="seg" id="levelSeg" role="group" aria-label="Dificuldade do computador">
+      <button type="button" data-level="facil">Fácil</button>
+      <button type="button" data-level="medio">Médio</button>
+      <button type="button" data-level="impossivel">Impossível</button>
+    </div>
+  </div>
+
+  <section class="score" aria-label="Placar">
+    <div class="score-item" data-p="X">
+      <span class="lab">
+        <svg viewBox="0 0 100 100" aria-hidden="true" class="ic ic-x"><path d="M18 18L82 82M82 18L18 82"/></svg>
+        <span>Você</span>
+      </span>
+      <span class="n" id="scX">0</span>
+    </div>
+    <div class="score-item" data-p="D">
+      <span class="lab">
+        <svg viewBox="0 0 100 100" aria-hidden="true" class="ic ic-d"><path d="M12 36H88M12 64H88"/></svg>
+        <span>Empates</span>
+      </span>
+      <span class="n" id="scD">0</span>
+    </div>
+    <div class="score-item" data-p="O">
+      <span class="lab">
+        <svg viewBox="0 0 100 100" aria-hidden="true" class="ic ic-o"><circle cx="50" cy="50" r="34" transform="rotate(-90 50 50)"/></svg>
+        <span>Computador</span>
+      </span>
+      <span class="n" id="scO">0</span>
+    </div>
+  </section>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <div class="board" id="board">
+    <svg class="lines" viewBox="0 0 300 300" aria-hidden="true">
+      <path class="grid-stitch" d="M100 14V286" pathLength="272"/>
+      <path class="grid-stitch" d="M200 14V286" pathLength="272"/>
+      <path class="grid-stitch" d="M14 100H286" pathLength="272"/>
+      <path class="grid-stitch" d="M14 200H286" pathLength="272"/>
+      <g id="winG"></g>
+    </svg>
+    <div class="cells" id="cells"></div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn" id="newBtn">Nova partida</button>
+    <button type="button" class="btn ghost" id="resetBtn">Zerar placar</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  var STORE = 'jogo-da-velha:v1';
+
+  var level = 'medio', starter = 'X';
+  var scores = { X: 0, O: 0, D: 0 };
+  var board, turn, over, locked, winInfo, timer = null;
+
+  var boardEl = document.getElementById('board');
+  var cellsEl = document.getElementById('cells');
+  var winG = document.getElementById('winG');
+  var statusEl = document.getElementById('status');
+    var cells = [];
+
+  /* ---------- persistência (opcional, por navegador) ---------- */
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (!raw) return;
+      var d = JSON.parse(raw);
+      if (['facil', 'medio', 'impossivel'].indexOf(d.level) >= 0) level = d.level;
+      if (d.scores) {
+        ['X', 'O', 'D'].forEach(function (k) {
+          var n = Number(d.scores[k]);
+          scores[k] = isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+        });
+      }
+    } catch (e) {}
+  }
+  function save() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({ level: level, scores: scores }));
+    } catch (e) {}
+  }
+
+  /* ---------- lógica ---------- */
+  function winner(b) {
+    for (var i = 0; i < LINES.length; i++) {
+      var l = LINES[i];
+      if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return { p: b[l[0]], line: l };
+    }
+    return null;
+  }
+  function empties(b) {
+    var r = [];
+    for (var i = 0; i < 9; i++) if (!b[i]) r.push(i);
+    return r;
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function findLine(p) {
+    var e = empties(board);
+    for (var k = 0; k < e.length; k++) {
+      board[e[k]] = p;
+      var w = winner(board);
+      board[e[k]] = '';
+      if (w) return e[k];
+    }
+    return -1;
+  }
+
+  function minimax(b, t, depth) {
+    var w = winner(b);
+    if (w) return w.p === 'O' ? 10 - depth : depth - 10;
+    var e = empties(b);
+    if (!e.length) return 0;
+    var best = t === 'O' ? -Infinity : Infinity;
+    for (var k = 0; k < e.length; k++) {
+      b[e[k]] = t;
+      var s = minimax(b, t === 'O' ? 'X' : 'O', depth + 1);
+      b[e[k]] = '';
+      best = t === 'O' ? Math.max(best, s) : Math.min(best, s);
+    }
+    return best;
+  }
+
+  function cpuMove() {
+    var e = empties(board);
+    var m = findLine('O');
+    if (m >= 0) return m;
+    if (level === 'facil') return pick(e);
+    m = findLine('X');
+    if (m >= 0) return m;
+    if (level === 'medio') return pick(e);
+    if (e.length === 9) return pick([0, 2, 4, 6, 8]);
+    var bestScore = -Infinity, bestMoves = [];
+    e.forEach(function (i) {
+      board[i] = 'O';
+      var s = minimax(board, 'X', 1);
+      board[i] = '';
+      if (s > bestScore) { bestScore = s; bestMoves = [i]; }
+      else if (s === bestScore) bestMoves.push(i);
+    });
+    return pick(bestMoves);
+  }
+
+  /* ---------- desenho ---------- */
+  function markSVG(p, i) {
+    if (p === 'X') {
+      return '<svg viewBox="0 0 100 100" class="mark x" aria-hidden="true"><defs>' +
+        '<mask id="mxa' + i + '" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><path class="reveal" d="M24 24L76 76" pathLength="92" style="--len:92;--d:0s"/></mask>' +
+        '<mask id="mxb' + i + '" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><path class="reveal" d="M76 24L24 76" pathLength="92" style="--len:92;--d:.3s"/></mask>' +
+        '</defs>' +
+        '<path class="stitch" d="M24 24L76 76" pathLength="92" mask="url(#mxa' + i + ')"/>' +
+        '<path class="stitch" d="M76 24L24 76" pathLength="92" mask="url(#mxb' + i + ')"/></svg>';
+    }
+    return '<svg viewBox="0 0 100 100" class="mark o" aria-hidden="true"><defs>' +
+      '<mask id="mo' + i + '" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><circle class="reveal" cx="50" cy="50" r="27" transform="rotate(-90 50 50)" pathLength="100" style="--len:100;--d:0s"/></mask>' +
+      '</defs>' +
+      '<circle class="stitch" cx="50" cy="50" r="27" transform="rotate(-90 50 50)" pathLength="100" mask="url(#mo' + i + ')"/></svg>';
+  }
+
+  function renderCell(i) {
+    var c = cells[i];
+    c.innerHTML = board[i] ? markSVG(board[i], i) : '';
+    var r = Math.floor(i / 3) + 1, col = (i % 3) + 1;
+    c.setAttribute('aria-label', 'Linha ' + r + ', coluna ' + col + ': ' + (board[i] || 'vazio'));
+    c.classList.toggle('empty', !board[i]);
+    c.classList.remove('win');
+  }
+
+  function center(i) { return { x: 50 + 100 * (i % 3), y: 50 + 100 * Math.floor(i / 3) }; }
+
+  function drawWinLine(line, p) {
+    var a = center(line[0]), b = center(line[2]);
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy);
+    var ux = dx / len, uy = dy / len, ext = 30;
+    var ns = 'http://www.w3.org/2000/svg';
+    var el = document.createElementNS(ns, 'line');
+    el.setAttribute('class', 'win-line');
+    el.setAttribute('x1', a.x - ux * ext);
+    el.setAttribute('y1', a.y - uy * ext);
+    el.setAttribute('x2', b.x + ux * ext);
+    el.setAttribute('y2', b.y + uy * ext);
+    el.setAttribute('pathLength', '100');
+    el.style.stroke = p === 'X' ? 'var(--x)' : 'var(--o)';
+    winG.appendChild(el);
+  }
+
+  function statusText() {
+    if (over) {
+      if (!winInfo) return 'Deu velha!';
+      return winInfo.p === 'X' ? 'Você venceu!' : 'O computador venceu.';
+    }
+    return turn === 'X' ? 'Sua vez' : 'Computador pensando…';
+  }
+
+  function update() {
+    statusEl.textContent = statusText();
+    boardEl.classList.toggle('playable', !over && !locked);
+    boardEl.classList.toggle('won', !!winInfo);
+    document.getElementById('scX').textContent = scores.X;
+    document.getElementById('scO').textContent = scores.O;
+    document.getElementById('scD').textContent = scores.D;
+    document.querySelectorAll('.score-item').forEach(function (el) {
+      el.classList.toggle('active', !over && el.dataset.p === turn);
+    });
+    document.querySelectorAll('[data-level]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    cells.forEach(function (c, i) {
+      c.setAttribute('aria-disabled', String(over || locked || !!board[i]));
+    });
+  }
+
+  /* ---------- fluxo ---------- */
+  // Primeira partida: você começa. Nas seguintes, o sorteio decide quem abre.
+  function newGame(nextRound) {
+    clearTimeout(timer);
+    if (nextRound) starter = Math.random() < 0.5 ? 'X' : 'O';
+    board = ['', '', '', '', '', '', '', '', ''];
+    turn = starter;
+    over = false;
+    locked = false;
+    winInfo = null;
+    winG.innerHTML = '';
+    for (var i = 0; i < 9; i++) renderCell(i);
+    update();
+    save();
+    maybeCpu();
+  }
+
+  function maybeCpu() {
+    if (turn === 'O' && !over) {
+      locked = true;
+      update();
+      timer = setTimeout(function () {
+        locked = false;
+        place(cpuMove(), 'O');
+      }, 450 + Math.random() * 250);
+    }
+  }
+
+  function place(i, p) {
+    board[i] = p;
+    renderCell(i);
+    var w = winner(board);
+    if (w) {
+      over = true;
+      winInfo = w;
+      scores[w.p]++;
+      w.line.forEach(function (k) { cells[k].classList.add('win'); });
+      drawWinLine(w.line, w.p);
+    } else if (!empties(board).length) {
+      over = true;
+      scores.D++;
+    } else {
+      turn = p === 'X' ? 'O' : 'X';
+    }
+    update();
+    save();
+    if (!over) maybeCpu();
+  }
+
+  function play(i) {
+    if (over || locked || board[i]) return;
+    place(i, turn);
+  }
+
+  function setLevel(l) {
+    if (l === level) return;
+    level = l;
+    scores = { X: 0, O: 0, D: 0 };
+    starter = 'X';
+    newGame(false);
+  }
+
+  /* ---------- início ---------- */
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell empty';
+      b.addEventListener('click', function () { play(i); });
+      cellsEl.appendChild(b);
+      cells.push(b);
+    })(i);
+  }
+
+  document.querySelectorAll('[data-level]').forEach(function (b) {
+    b.addEventListener('click', function () { setLevel(b.dataset.level); });
+  });
+  document.getElementById('newBtn').addEventListener('click', function () { newGame(over); });
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    scores = { X: 0, O: 0, D: 0 };
+    starter = 'X';
+    newGame(false);
+  });
+
+  load();
+  newGame(false);
+})();
+</script>
+</body>
+</html>
