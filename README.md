@@ -1,11 +1,7 @@
 Jogo da Velha
 Jogo da velha para jogar contra o computador, em um único arquivo HTML, sem dependências e sem etapa de build. O visual é inspirado em bordado sashiko: a grade é feita de pontos de costura e cada X ou O é "bordado" na hora em que você joga.
 
-
-https://jonasdamaia.github.io/jogo_da_velha/
-
-
-
+▶️ [Jogar agora](https://jonasdamaia.github.io/jogo_da_velha/)
 
 Recursos
 Pessoa contra computador. Você joga com o X (linha vermelha) e o computador joga com o O.
